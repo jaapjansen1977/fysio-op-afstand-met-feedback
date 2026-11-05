@@ -9,6 +9,7 @@ import { confidence, sideIndices } from '../engine/LandmarkProcessor';
 interface Props { prescription: ExercisePrescription; onFinish: (s: Session) => void }
 type Status = 'idle' | 'loading' | 'running' | 'paused' | 'rest';
 export function PatientUI({ prescription, onFinish }: Props) {
+  const exercise = ExerciseLibrary.exercises.find(e => e.id === prescription.exerciseId)!;
   const video = useRef<HTMLVideoElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<ExerciseSession | null>(null), estimator = useRef<MediaPipePoseEstimator | null>(null), stream = useRef<MediaStream | null>(null);
   const raf = useRef(0), mounted = useRef(true), state = useRef<Status>('idle'), generation = useRef(0);
@@ -86,7 +87,7 @@ export function PatientUI({ prescription, onFinish }: Props) {
             if (now - started > 30 * 60 * 1000) { setError('Maximale sessieduur bereikt (30 minuten).'); finish(); return; }
             if (now - lastProcess >= 30 && (mode === 'demo' || (v && v.readyState >= 2 && v.currentTime !== lastVideoTime))) {
               lastProcess = now; if (v) lastVideoTime = v.currentTime;
-              const frame = mode === 'demo' ? demoFrame(now, demoElapsed) : estimator.current?.estimate(v!, now);
+              const frame = mode === 'demo' ? demoFrame(now, demoElapsed, exercise.detector.kind, prescription.facing) : estimator.current?.estimate(v!, now);
               if (frame) {
                 const e = engine.current!;
                 const result = e.process(frame);
@@ -114,14 +115,15 @@ export function PatientUI({ prescription, onFinish }: Props) {
       if (isCurrent()) { setError(err instanceof Error ? err.message : 'Camera kon niet starten.'); change('idle'); release(); }
     }
   }
-  const phaseLabel: Record<string, string> = { seeking: 'Ga rechtop staan', ready: 'Klaar voor de volgende squat', eccentric: 'Zakken', concentric: 'Omhoog' };
+  const { seeking, ready, eccentric, concentric } = exercise.instructions;
+  const phaseLabel: Record<string, string> = { seeking, ready, eccentric, concentric };
   const active = status !== 'idle' && status !== 'loading';
   return <div className="patient-layout"><section className="camera-card">
     <div className="camera-top"><span className="camera-label"><span className={active ? 'dot live' : 'dot'}/>{source === 'demo' && active ? 'SYNTHETISCHE DEMO' : 'SAGITTAAL · ZIJAANZICHT'}</span><span>{hz.toFixed(1)} Hz effectief</span></div>
     <div className="camera-stage"><video ref={video} muted playsInline style={{ visibility: source === 'demo' ? 'hidden' : 'visible' }}/><canvas ref={canvas}/>
-      {status === 'idle' && <div className="camera-placeholder"><div className="camera-icon">◉</div><h2>Klaar om te bewegen?</h2><p>Zet je camera op heuphoogte.<br/>Sta met je zijkant naar de camera.</p><button className="primary" onClick={() => void start('camera')}>Webcam starten</button><button className="demo-link" onClick={() => void start('demo')}>Probeer de demonstratie →</button></div>}
+      {status === 'idle' && <div className="camera-placeholder"><div className="camera-icon">◉</div><h2>Klaar om te bewegen?</h2><p>{exercise.description}</p><button className="primary" onClick={() => void start('camera')}>Webcam starten</button><button className="demo-link" onClick={() => void start('demo')}>Probeer de demonstratie →</button></div>}
       {status === 'loading' && <div className="camera-placeholder"><h2>Camera & pose-model laden…</h2><p>Geef toestemming voor je webcam.</p></div>}
-      {(status === 'paused' || status === 'rest') && <div className="camera-placeholder"><h2>{status === 'rest' ? 'Set afgerond' : 'Gepauzeerd'}</h2><p>{status === 'rest' ? 'Neem rust en start wanneer je klaar bent.' : 'De lopende herhaling is onderbroken.'}</p></div>}
+      {(status === 'paused' || status === 'rest') && <div className="camera-placeholder"><h2>{status === 'rest' ? 'Set afgerond' : 'Gepauzeerd'}</h2><p>{status === 'rest' ? 'Neem rust en start wanneer je klaar bent.' : `De lopende herhaling is onderbroken. ${exercise.instructions.pause}`}</p></div>}
       {status === 'running' && <span className={`tracking-badge ${sample ? '' : 'warning'}`}>{sample ? `Tracking actief · ${sample.side === 'left' ? 'linker' : 'rechter'}been · ${Math.round(sample.quality * 100)}%` : 'Meting gepauzeerd · ga volledig in beeld staan'}</span>}
     </div>
     <div className="camera-controls"><span>Video blijft op dit apparaat</span><div className="inline-actions">{status === 'running' && <button className="secondary" onClick={() => { engine.current?.interrupt(); setSample(null); setMessages([]); change('paused'); }}>Ⅱ Pauzeren</button>}{status === 'paused' && <button className="primary" onClick={() => change('running')}>Hervatten</button>}{status === 'rest' && <button className="primary" onClick={() => { engine.current?.nextSet(); setSet(engine.current!.set); setCount(0); setSample(null); setMessages([]); change('running'); }}>Start set {set + 1}</button>}{active && <button className="quiet" onClick={() => finish()}>Stoppen</button>}</div></div>
@@ -130,6 +132,6 @@ export function PatientUI({ prescription, onFinish }: Props) {
     <section className="card progress-card"><span className="eyebrow">JE TRAINING</span><div className="set-heading"><h2>Set {set} <span>/ {prescription.sets}</span></h2><span>{prescription.reps} herhalingen</span></div><div className="rep-number">{count}<span> / {prescription.reps}</span></div><progress max={prescription.reps} value={count}/><p>{status === 'running' ? phaseLabel[phase] : status === 'rest' ? 'Rustmoment' : 'Beweeg op jouw tempo'}</p></section>
     <section className="card angle-card"><span className="eyebrow">ACTUELE KNIEFLEXIE</span><div className="angle-value">{sample ? Math.round(sample.kneeFlexion) : '—'}<span>°</span></div><p>0° = volledige knie-extensie</p></section>
     <section className={`card feedback-card ${messages[0]?.tone ?? ''}`} aria-live="polite"><span className="eyebrow">BEWEGINGSFEEDBACK</span>{prescription.visual && messages.length ? messages.map(m => <p key={m.metric}><strong>{ExerciseLibrary.metrics.find(metric => metric.id === m.metric)?.label}: {m.value.toFixed(1)} {ExerciseLibrary.metrics.find(metric => metric.id === m.metric)?.unit}</strong><br/>{m.text}</p>) : <p>{prescription.visual ? 'Je feedback verschijnt hier zodra een geldige meting beschikbaar is.' : 'Visuele feedback is uitgeschakeld.'}</p>}{prescription.timing === 'live' && <small>Momentopname; maxima, ROM en duur staan in de resultaten.</small>}</section>
-    <section className="tempo-strip"><span>TEMPO</span><strong>{prescription.tempo.eccentric} – {prescription.tempo.hold} – {prescription.tempo.concentric}</strong><small>Zakken · vasthouden · omhoog (s)<br/>Tempo is een instructie, geen automatische beoordeling.</small></section>
+    <section className="tempo-strip"><span>TEMPO</span><strong>{exercise.instructions.tempoOrder.map(key => prescription.tempo[key]).join(' – ')}</strong><small>{exercise.instructions.cycle.join(' · ')} (s)<br/>Tempo is een instructie, geen automatische beoordeling.</small></section>
   </aside></div>;
 }

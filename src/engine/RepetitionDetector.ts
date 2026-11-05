@@ -1,5 +1,6 @@
 import type { Exercise } from '../domain/ExerciseLibrary';
 import type { KinematicSample, Repetition } from '../domain/types';
+import { repMetrics } from './RepMetrics';
 export class RepetitionDetector {
   phase: 'seeking' | 'ready' | 'eccentric' | 'concentric' = 'seeking';
   private baseline: KinematicSample | null = null;
@@ -39,13 +40,8 @@ export class RepetitionDetector {
     const result = valid ? {
       start, bottom: peak.timestamp, end: s.timestamp,
       eccentricDuration: (peak.timestamp - start) / 1000, concentricDuration: (s.timestamp - peak.timestamp) / 1000,
-      metrics: {
-        maxKneeFlexion: peak.kneeFlexion, kneeROM: rom,
-        maxHipFlexion: Math.max(...frames.map(x => x.hipFlexion)),
-        maxTrunkInclination: Math.max(...frames.map(x => x.trunkInclination)),
-        maxExtensionVelocity: Math.max(0, ...frames.filter(x => x.timestamp >= peak.timestamp).map(x => -x.kneeVelocity)),
-        duration: (s.timestamp - start) / 1000,
-      },
+      turn: peak.timestamp, turnPosition: 'deepest' as const,
+      metrics: repMetrics(frames, frames.filter(x => x.timestamp >= peak.timestamp)),
       quality: Math.min(...frames.map(x => x.quality)),
     } : null;
     this.reset();

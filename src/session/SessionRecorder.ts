@@ -24,9 +24,9 @@ export function saveSession(session: Session) {
 }
 export function exportJSON(session: Session) { return JSON.stringify(session, null, 2); }
 export function exportCSV(session: Session) {
-  const header = ['set','rep','maxKneeFlexion_deg','kneeROM_deg','maxHipFlexion_deg','maxTrunkInclination_deg','maxExtensionVelocity_deg_s','duration_s','eccentric_s','concentric_s','quality','targets'];
+  const header = ['exerciseId','set','rep','maxKneeFlexion_deg','kneeROM_deg','maxHipFlexion_deg','maxTrunkInclination_deg','maxExtensionVelocity_deg_s','duration_s','eccentric_s','concentric_s','quality','targets'];
   const quote = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  return [header, ...session.repetitions.map(r => [r.set, r.index, r.metrics.maxKneeFlexion, r.metrics.kneeROM, r.metrics.maxHipFlexion, r.metrics.maxTrunkInclination, r.metrics.maxExtensionVelocity, r.metrics.duration, r.eccentricDuration, r.concentricDuration, r.quality, r.feedback.map(f => `${f.metric}:${f.outcome}`).join(';')])].map(row => row.map(quote).join(',')).join('\r\n');
+  return [header, ...session.repetitions.map(r => [session.prescription.exerciseId, r.set, r.index, r.metrics.maxKneeFlexion, r.metrics.kneeROM, r.metrics.maxHipFlexion, r.metrics.maxTrunkInclination, r.metrics.maxExtensionVelocity, r.metrics.duration, r.eccentricDuration, r.concentricDuration, r.quality, r.feedback.map(f => `${f.metric}:${f.outcome}`).join(';')])].map(row => row.map(quote).join(',')).join('\r\n');
 }
 export function download(name: string, contents: string, type: string) {
   const url = URL.createObjectURL(new Blob([contents], { type }));

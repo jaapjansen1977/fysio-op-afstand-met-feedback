@@ -4,12 +4,14 @@ import type { Feedback, KinematicSample, PoseFrame, Session } from '../domain/ty
 import { LandmarkProcessor } from '../engine/LandmarkProcessor';
 import { KinematicsEngine } from '../engine/KinematicsEngine';
 import { RepetitionDetector } from '../engine/RepetitionDetector';
+import { SitToStandDetector } from '../engine/SitToStandDetector';
+import type { RepetitionStrategy } from '../engine/RepMetrics';
 import { FeedbackEngine } from '../engine/FeedbackEngine';
 import { SessionRecorder } from './SessionRecorder';
 export class ExerciseSession {
   readonly landmarks = new LandmarkProcessor();
   readonly kinematics: KinematicsEngine;
-  readonly detector: RepetitionDetector;
+  readonly detector: RepetitionStrategy;
   readonly feedback = new FeedbackEngine();
   readonly recorder: SessionRecorder;
   set = 1;
@@ -19,7 +21,9 @@ export class ExerciseSession {
   constructor(readonly prescription: ExercisePrescription, source: Session['source']) {
     const exercise = ExerciseLibrary.exercises.find(e => e.id === prescription.exerciseId)!;
     this.kinematics = new KinematicsEngine(prescription.filter, prescription.facing);
-    this.detector = new RepetitionDetector(exercise.detector, prescription.filter.maxGapMs);
+    this.detector = exercise.detector.kind === 'sitToStand'
+      ? new SitToStandDetector(exercise.detector, prescription.filter.maxGapMs)
+      : new RepetitionDetector(exercise.detector, prescription.filter.maxGapMs);
     this.recorder = new SessionRecorder(prescription, source);
   }
   interrupt() { this.kinematics.reset(); this.detector.reset(); this.previousTime = null; }

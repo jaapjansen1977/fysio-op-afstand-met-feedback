@@ -6,6 +6,8 @@ interface Props { prescription: ExercisePrescription; onSave: (p: ExercisePrescr
 export function TherapistUI({ prescription, onSave, onStart }: Props) {
   const [draft, setDraft] = useState(() => structuredClone(prescription));
   const [notice, setNotice] = useState('');
+  const exercise = ExerciseLibrary.exercises.find(e => e.id === draft.exerciseId)!;
+  const tempoKeys = exercise.instructions.tempoOrder;
   const update = <K extends keyof ExercisePrescription>(key: K, value: ExercisePrescription[K]) => setDraft(d => ({ ...d, [key]: value }));
   function save(start = false) {
     const result = prescriptionSchema.safeParse(draft);
@@ -25,14 +27,14 @@ export function TherapistUI({ prescription, onSave, onStart }: Props) {
         <label>Herhalingen per set<input type="number" min="1" max="100" value={draft.reps} onChange={e => update('reps', +e.target.value)}/></label>
       </div>
       <h3>Bewegingstempo <span className="muted">seconden</span></h3><div className="field-grid three">
-        {(['eccentric', 'hold', 'concentric'] as const).map((key, i) => <label key={key}>{['Zakken', 'Vasthouden', 'Omhoog'][i]}<input type="number" min={key === 'hold' ? 0 : 0.2} step="0.5" value={draft.tempo[key]} onChange={e => update('tempo', { ...draft.tempo, [key]: +e.target.value })}/></label>)}
+        {tempoKeys.map((key, i) => <label key={key}>{exercise.instructions.cycle[i]}<input type="number" min={key === 'hold' ? 0 : 0.2} step="0.5" value={draft.tempo[key]} onChange={e => update('tempo', { ...draft.tempo, [key]: +e.target.value })}/></label>)}
       </div>
       <div className="field-grid"><label>Externe belasting<select value={draft.load.type} onChange={e => update('load', { ...draft.load, type: e.target.value as ExercisePrescription['load']['type'] })}><option value="bodyweight">Lichaamsgewicht</option><option value="kg">Gewicht (kg)</option><option value="band">Elastiek</option></select></label>
         {draft.load.type === 'kg' && <label>Kilogram<input type="number" min="0" value={draft.load.value} onChange={e => update('load', { ...draft.load, value: +e.target.value })}/></label>}
         {draft.load.type === 'band' && <label>Elastiek / weerstand<input maxLength={150} value={draft.load.note} onChange={e => update('load', { ...draft.load, note: e.target.value })}/></label>}
       </div>
       <h3>Camera-opstelling</h3><div className="field-grid"><label>Camerapositie<select value={draft.camera} onChange={() => {}}><option value="sagittal">Sagittaal · zijaanzicht</option></select></label><label>Kijkrichting in beeld<select value={draft.facing} onChange={e => update('facing', e.target.value as 'left' | 'right')}><option value="right">Naar rechts →</option><option value="left">← Naar links</option></select></label></div>
-      <p className="hint">Plaats de camera op heuphoogte, loodrecht op de zijkant. Houd het hele lichaam in beeld. Het beeld is niet gespiegeld.</p>
+      <p className="hint">Plaats de camera op heuphoogte, loodrecht op de zijkant. Houd het hele lichaam in beeld. Links of rechts kijken mag; stel de overeenkomstige kijkrichting in. Het beeld is niet gespiegeld.</p>
     </section>
     <section className="card"><div className="section-title"><span className="step">02</span><div><h2>Metingen & doelbereiken</h2><p>Kies wat je meet en waarop je feedback geeft.</p></div></div>
       <div className="table-scroll"><table className="parameters"><thead><tr><th>Parameter</th><th>Meten</th><th>Feedback</th><th>Van</th><th>Tot</th><th>±</th></tr></thead><tbody>

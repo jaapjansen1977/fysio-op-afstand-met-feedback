@@ -89,7 +89,7 @@ describe('Squat state machine', () => {
     expect(rep.metrics.maxExtensionVelocity!).toBeGreaterThan(50);
     expect(rep.eccentricDuration).toBeGreaterThan(.25);
     expect(rep.concentricDuration).toBeGreaterThan(.25);
-    expect(rep.start).toBeLessThan(rep.bottom); expect(rep.bottom).toBeLessThan(rep.end);
+    expect(rep.bottom).toBeDefined(); expect(rep.start).toBeLessThan(rep.bottom!); expect(rep.bottom!).toBeLessThan(rep.end);
   });
   it('detects consecutive reps without double counting', () => {
     const detector = new RepetitionDetector(config,350);
