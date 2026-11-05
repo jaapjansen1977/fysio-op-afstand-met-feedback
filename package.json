@@ -1,0 +1,31 @@
+{
+  "name": "physio-exercise-feedback",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.10.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "assets": "node --use-system-ca --use-env-proxy scripts/prepare-assets.mjs --required",
+    "postinstall": "node --use-system-ca --use-env-proxy scripts/prepare-assets.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.1.0",
+    "typescript": "5.9.3",
+    "vite": "7.2.2",
+    "vitest": "4.0.8"
+  }
+}

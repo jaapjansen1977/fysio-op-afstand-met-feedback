@@ -1,0 +1,22 @@
+import type { Session } from '../domain/types';
+import { ExerciseLibrary } from '../domain/ExerciseLibrary';
+import { download, exportCSV, exportJSON } from '../session/SessionRecorder';
+export function ResultsUI({ session }: { session: Session }) {
+  const samples = session.samples;
+  const start = samples[0]?.timestamp ?? 0, end = samples.at(-1)?.timestamp ?? start + 1;
+  const span = Math.max(1, end - start);
+  // Separate polylines at measurement gaps; do not interpolate through lost tracking.
+  const segments: string[][] = [];
+  let previous = -Infinity;
+  samples.forEach((s, i) => {
+    if (i % Math.max(1, Math.floor(samples.length / 1800)) !== 0 && i !== samples.length - 1) return;
+    if (!segments.length || s.timestamp - previous > Math.max(session.prescription.filter.maxGapMs, span / 1800 * 2)) segments.push([]);
+    segments.at(-1)!.push(`${55 + (s.timestamp - start) / span * 910},${225 - s.kneeFlexion / 180 * 200}`); previous = s.timestamp;
+  });
+  const outcome = { within: 'Binnen bereik', below: 'Onder bereik', above: 'Boven bereik' };
+  return <div className="results"><section className="result-summary"><div className="card"><span className="eyebrow">HERHALINGEN</span><h2>{session.repetitions.length}<small> / {session.prescription.sets * session.prescription.reps}</small></h2></div><div className="card"><span className="eyebrow">EFFECTIEVE TRACKING</span><h2>{session.tracking.effectiveHz.toFixed(1)} <small>Hz</small></h2><p>{session.tracking.validFrames} geldige / {session.tracking.attemptedFrames} verwerkte frames</p></div><div className="card"><span className="eyebrow">SESSIE</span><h2>{session.source === 'demo' ? 'Demonstratie' : 'Webcam'}</h2><p>{session.status === 'completed' ? 'Alle sets afgerond' : 'Voortijdig gestopt'} · {new Date(session.createdAt).toLocaleString('nl-NL')}</p></div></section>
+    <section className="card"><div className="section-title split"><div><h2>Kniehoek in de tijd</h2><p>Gefilterde sagittale knieflexie · graden</p></div><span className="chart-legend">● Knieflexie</span></div>{samples.length ? <svg className="angle-chart" viewBox="0 0 1000 275" role="img" aria-label="Knieflexie in graden uitgezet tegen tijd in seconden">{[0,45,90,135,180].map(a => <g key={a}><line x1="55" x2="965" y1={225-a/180*200} y2={225-a/180*200} stroke="#e3eae7"/><text x="40" y={230-a/180*200} textAnchor="end">{a}°</text></g>)}{segments.map((points, i) => <polyline key={i} points={points.join(' ')} fill="none" stroke="#21846c" strokeWidth="2.5"/>)}<text x="55" y="257">0 s</text><text x="965" y="257" textAnchor="end">{(span/1000).toFixed(1)} s</text></svg> : <p>Geen geldige metingen opgenomen.</p>}</section>
+    <section className="card"><div className="section-title split"><div><h2>Resultaten per herhaling</h2><p>Alleen volledig herkende herhalingen. — = niet geselecteerd voor meting.</p></div><div className="inline-actions"><button className="secondary" onClick={() => download('squat-resultaten.json', exportJSON(session), 'application/json')}>↓ JSON</button><button className="secondary" onClick={() => download('squat-resultaten.csv', '\uFEFF' + exportCSV(session), 'text/csv;charset=utf-8')}>↓ CSV</button></div></div><div className="table-scroll"><table><thead><tr><th>Set / rep</th>{ExerciseLibrary.metrics.map(m => <th key={m.id}>{m.label}<small>{m.unit}</small></th>)}<th>Fasen (s)<small>neer / op</small></th><th>Kwaliteit</th><th>Doelwaarden</th></tr></thead><tbody>{session.repetitions.map((r,i) => <tr key={i}><td>{r.set} / {r.index}</td>{ExerciseLibrary.metrics.map(m => <td key={m.id}>{r.metrics[m.id]?.toFixed(1) ?? '—'}</td>)}<td>{r.eccentricDuration.toFixed(1)} / {r.concentricDuration.toFixed(1)}</td><td>{Math.round(r.quality*100)}%</td><td>{r.feedback.length ? r.feedback.map(f => <small className={`outcome ${f.outcome}`} key={f.metric}>{ExerciseLibrary.metrics.find(m=>m.id===f.metric)?.label}: {outcome[f.outcome]}</small>) : 'Geen feedbackregels'}</td></tr>)}</tbody></table></div>{!session.repetitions.length && <p className="hint">Nog geen volledige herhaling. Begin rechtop, maak voldoende ROM en keer terug naar extensie.</p>}</section>
+    <p className="hint">Kwaliteit is de laagste landmarkbetrouwbaarheid binnen de herhaling, geen maat voor klinische nauwkeurigheid. Effectieve Hz = geldige analyses / actieve meettijd, inclusief trackingverlies en exclusief handmatige pauzes en setrust. {session.source === 'demo' && 'Dit zijn synthetische demonstratieresultaten.'}</p>
+  </div>;
+}

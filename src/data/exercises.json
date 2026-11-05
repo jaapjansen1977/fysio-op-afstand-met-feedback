@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {"id":"mobility","name":"Mobiliteit en ROM"},
+    {"id":"strength","name":"Spierkracht en weerstand"},
+    {"id":"balance","name":"Balans en houdingscontrole"},
+    {"id":"functional","name":"Functionele bewegingen"},
+    {"id":"jump","name":"Sprong- en landingstraining"},
+    {"id":"sport","name":"Sportspecifieke training"}
+  ],
+  "metrics": [
+    {"id":"maxKneeFlexion","label":"Max. knieflexie","unit":"°"},
+    {"id":"kneeROM","label":"Knie-ROM","unit":"°"},
+    {"id":"maxHipFlexion","label":"Max. heupflexie","unit":"°"},
+    {"id":"maxTrunkInclination","label":"Max. rompinclinatie","unit":"°"},
+    {"id":"maxExtensionVelocity","label":"Max. kniestreksnelheid","unit":"°/s"},
+    {"id":"duration","label":"Herhalingsduur","unit":"s"}
+  ],
+  "feedback": {
+    "below":"Onder het ingestelde doelbereik. Volg de aanwijzingen van je therapeut.",
+    "within":"Goed gedaan, binnen het ingestelde doelbereik.",
+    "above":"Boven het ingestelde doelbereik. Pas de beweging rustig aan."
+  },
+  "exercises": [{
+    "id":"EX001","name":"Tweebenige squat","categories":["strength"],
+    "description":"Sta op twee benen. Zak gecontroleerd door je knieën en kom rustig terug omhoog. Film vanaf de zijkant, met schouder, heup, knie en enkel in beeld.",
+    "camera":"sagittal","primarySignal":"kneeFlexion",
+    "detector":{"extension":12,"start":22,"minROM":30,"reversal":5,"minPhaseMs":250,"minRepMs":1000,"maxRepMs":15000}
+  }]
+}
